@@ -18,7 +18,7 @@ To add the Gomoku game to your Banter space, simply add the following script tag
 
 ```html
 <!-- Add this to the <body> of your index.html -->
-<script src="Gomoku.js"></script>
+<script src="https://banter-gomoku.firer.at/Gomoku.js"></script>
 ```
 
 This will load the game with its default settings.
@@ -36,12 +36,12 @@ You can customize the game by adding URL parameters to the script's `src` attrib
 
 | Parameter         | Type        | Default Value         | Description                                                                                                   |
 |-------------------|-------------|-----------------------|---------------------------------------------------------------------------------------------------------------|
-| `instance`        | `string`    | (current URL)         | A unique ID for the game instance. Use this if you have multiple Gomoku boards in the same world.               |
-| `boardSize`       | `integer`   | `15`                  | The size of the board (e.g., `15` for 15x15, `19` for 19x19).                                                    |
+| `instance`        | `string`    | (current URL)         | A unique ID for the game instance. Use this if you have multiple Gomoku boards in the same world.             |
+| `boardSize`       | `integer`   | `15`                  | The size of the board (e.g., `15` for 15x15, `19` for 19x19).                                                 |
 | `hideUI`          | `boolean`   | `false`               | Set to `true` to hide the reset button.                                                                       |
-| `boardPosition`   | `Vector3`   | `0 1.5 0`             | The position of the game board in your world (X Y Z, space-separated).                                          |
-| `boardRotation`   | `Vector3`   | `0 0 0`               | The rotation of the game board in Euler angles (X Y Z, space-separated).                                        |
-| `boardScale`      | `Vector3`   | `1 1 1`               | The scale of the game board (X Y Z, space-separated).                                                           |
+| `boardPosition`   | `Vector3`   | `0 1.5 0`             | The position of the game board in your world (X Y Z, space-separated).                                        |
+| `boardRotation`   | `Vector3`   | `0 0 0`               | The rotation of the game board in Euler angles (X Y Z, space-separated).                                      |
+| `boardScale`      | `Vector3`   | `1 1 1`               | The scale of the game board (X Y Z, space-separated).                                                         |
 | `resetPosition`   | `Vector3`   | `0 -1.2 0`            | The position of the reset button relative to the board.                                                       |
 | `resetRotation`   | `Vector3`   | `0 0 0`               | The rotation of the reset button.                                                                             |
 | `resetScale`      | `Vector3`   | `1 1 1`               | The scale of the reset button.                                                                                |
