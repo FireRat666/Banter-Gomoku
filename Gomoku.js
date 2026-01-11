@@ -263,12 +263,16 @@
                 state.cells[r][c] = cellObj;
 
                 // Visible piece placeholder (starts inactive)
-                // Use CylinderGeometry for Go stones
-                const piece = await createBanterObject(state.piecesRoot, BS.GeometryType.CylinderGeometry,
-                    { radius: pieceSize, height: 0.02 },
+                // Use SphereGeometry for Go stones
+                const piece = await createBanterObject(state.piecesRoot, BS.GeometryType.SphereGeometry,
+                    { radius: pieceSize },
                     COLORS.player1,
                     new BS.Vector3(x, y, 0.04)
                 );
+                // Flatten the sphere to look like a stone (scale Z axis for XY board)
+                const pt = piece.GetComponent(BS.ComponentType.Transform);
+                pt.localScale = new BS.Vector3(1, 1, 0.3);
+
                 await piece.SetLayer(5); // Ensure it's on UI layer
                 piece.SetActive(false);
                 state.slots[r][c] = piece;
@@ -310,6 +314,17 @@
 
         if (type === BS.GeometryType.BoxGeometry) {
             return [type, null, w, h, d];
+        } else if (type === BS.GeometryType.SphereGeometry) {
+            // Sphere specific args for smoothness (based on CheckersExample)
+            const PI2 = 6.283185;
+            return [
+                type, null, w, h, d,
+                24, 16, 1, // widthSeg, heightSeg, depthSeg
+                r, 24, // radius, segments
+                0, PI2, 0, PI2,
+                8, false,
+                r, r
+            ];
         } else {
             // For Cylinder, Sphere, Circle, etc that likely need radius or segments.
             // Arguments: type, param, w, h, d, wSeg, hSeg, dSeg, radius, segments
