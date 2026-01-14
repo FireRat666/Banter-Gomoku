@@ -262,12 +262,13 @@
                 });
                 state.cells[r][c] = cellObj;
 
-                // Visible piece placeholder (starts inactive)
+                // Visible piece placeholder (starts inactive) - needs unique material for color changes
                 // Use SphereGeometry for Go stones
                 const piece = await createBanterObject(state.piecesRoot, BS.GeometryType.SphereGeometry,
                     { radius: pieceSize },
                     COLORS.player1,
-                    new BS.Vector3(x, y, 0.04)
+                    new BS.Vector3(x, y, 0.04),
+                    false, 1.0, `piece_${r}_${c}`
                 );
                 // Flatten the sphere to look like a stone (scale Z axis for XY board)
                 const pt = piece.GetComponent(BS.ComponentType.Transform);
@@ -341,7 +342,7 @@
         }
     }
 
-    async function createBanterObject(parent, type, dims, colorHex, pos, hasCollider = false, opacity = 1.0) {
+    async function createBanterObject(parent, type, dims, colorHex, pos, hasCollider = false, opacity = 1.0, cacheBust = null) {
         const obj = await new BS.GameObject("Geo").Async();
         await obj.SetParent(parent, false);
 
@@ -354,7 +355,8 @@
         const color = hexToVector4(colorHex, opacity);
 
         const shader = opacity < 1.0 ? "Unlit/DiffuseTransparent" : "Unlit/Diffuse";
-        await obj.AddComponent(new BS.BanterMaterial(shader, "", color, BS.MaterialSide.Front, false));
+        // Use cacheBust to create unique material instance for objects that need dynamic colors
+        await obj.AddComponent(new BS.BanterMaterial(shader, "", color, BS.MaterialSide.Front, false, cacheBust || ""));
 
         if (hasCollider) {
             let colSize = new BS.Vector3(dims.width || 1, dims.height || 1, dims.depth || 1);
