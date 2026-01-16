@@ -43,6 +43,7 @@ You can customize the game by adding URL parameters to the script's `src` attrib
 | `useCustomModels` | `boolean`   | `false`               | Use GLB models for pieces.                                                                                    |
 | `lighting`        | `string`    | `unlit`               | Shader type: 'lit' or 'unlit'.                                                                                |
 | `addLights`       | `boolean`   | `true`                | Add directional light for lit mode.                                                                           |
+| `useAOBaking`     | `boolean`   | `false`               | Bake Ambient Occlusion on board geometry.                                                                     |
 | `boardPosition`   | `Vector3`   | `0 1.5 0`             | The position of the game board in your world (X Y Z, space-separated).                                        |
 | `boardRotation`   | `Vector3`   | `0 0 0`               | The rotation of the game board in Euler angles (X Y Z, space-separated).                                      |
 | `boardScale`      | `Vector3`   | `1 1 1`               | The scale of the game board (X Y Z, space-separated).                                                         |
