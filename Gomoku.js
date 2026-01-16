@@ -14,7 +14,11 @@
         resetScale: new BS.Vector3(1, 1, 1),
         instance: window.location.href.split('?')[0],
         hideUI: false,
-        boardSize: 15 // Standard is 15x15 or 19x19. 15 is a good start.
+        boardSize: 15, // Standard is 15x15 or 19x19. 15 is a good start.
+        hideBoard: false,
+        useCustomModels: false,
+        lighting: 'unlit',
+        addLights: true
     };
 
     const COLORS = {
@@ -23,6 +27,12 @@
         player2: '#FFFFFF',  // White stone
         empty: '#FFFFFF',    // Empty slot (will be invisible)
         winHighlight: '#00FF00', // Green highlight for winning pieces
+    };
+
+    const PIECE_MODELS = {
+        1: 'DiscDarkestGrey.glb', // Black
+        2: 'DiscGrey.glb',        // White
+        'highlight': 'DiscGreen.glb'
     };
 
     // Helper to parse Vector3
@@ -43,8 +53,12 @@
         const params = new URLSearchParams(url.search);
 
         if (params.has('hideUI')) config.hideUI = params.get('hideUI') === 'true';
+        if (params.has('hideBoard')) config.hideBoard = params.get('hideBoard') === 'true';
         if (params.has('instance')) config.instance = params.get('instance');
         if (params.has('boardSize')) config.boardSize = parseInt(params.get('boardSize'), 10) || 15;
+        if (params.has('useCustomModels')) config.useCustomModels = params.get('useCustomModels') === 'true';
+        if (params.has('lighting')) config.lighting = params.get('lighting');
+        if (params.has('addLights')) config.addLights = params.get('addLights') !== 'false';
 
         config.boardScale = parseVector3(params.get('boardScale'), config.boardScale);
         config.boardPosition = parseVector3(params.get('boardPosition'), config.boardPosition);
@@ -178,11 +192,20 @@
     const state = {
         root: null,
         piecesRoot: null,
-        slots: [], // 2D array of GameObjects for pieces
+        slots: [], // 2D array of { sphere, blackModel, whiteModel, greenModel }
         cells: [], // 2D array of clickable cell GameObjects
         isSyncing: false,
         game: new GomokuGame(config.boardSize, config.boardSize)
     };
+
+    function getModelUrl(modelName) {
+        try {
+            if (currentScript) {
+                return new URL(`../Models/${modelName}`, currentScript.src).href;
+            }
+        } catch (e) { console.error("Error resolving model URL:", e); }
+        return `../Models/${modelName}`;
+    }
 
     function hexToVector4(hex, alpha = 1.0) {
         let c = hex.substring(1);
@@ -213,27 +236,41 @@
         const boardDimension = (cols - 1) * gap;
         const boardThickness = 0.02;
 
-        // Create the board base
-        const boardBase = await createBanterObject(state.root, BS.GeometryType.BoxGeometry,
-            { width: boardDimension + gap, height: boardDimension + gap, depth: boardThickness },
-            COLORS.board, new BS.Vector3(0, 0, -boardThickness / 2));
 
-        // --- Construct Grid ---
-        const gridRoot = await new BS.GameObject("Grid_Root").Async();
-        await gridRoot.SetParent(state.root, false);
-        await gridRoot.AddComponent(new BS.Transform());
-        const lineThickness = 0.005;
 
-        for (let i = 0; i < rows; i++) {
-            const pos = (i - (rows - 1) / 2) * gap;
-            // Vertical Line
-            await createBanterObject(gridRoot, BS.GeometryType.BoxGeometry,
-                { width: lineThickness, height: boardDimension, depth: lineThickness },
-                '#000000', new BS.Vector3(pos, 0, 0.01));
-            // Horizontal Line
-            await createBanterObject(gridRoot, BS.GeometryType.BoxGeometry,
-                { width: boardDimension, height: lineThickness, depth: lineThickness },
-                '#000000', new BS.Vector3(0, pos, 0.01));
+        // Add a light if we are using lit models
+        if (config.useCustomModels && config.lighting === 'lit' && config.addLights) {
+            const lightGO = await new BS.GameObject("Gomoku_DirectionalLight");
+            await lightGO.SetParent(state.root, false);
+            let lightTrans = await lightGO.AddComponent(new BS.Transform());
+            lightTrans.localPosition = new BS.Vector3(0, 2, -2);
+            lightTrans.localEulerAngles = new BS.Vector3(45, 0, 0);
+            await lightGO.AddComponent(new BS.Light(1, new BS.Vector4(1, 1, 1, 1), 1, 0.1));
+        }
+
+        if (!config.hideBoard) {
+            // Create the board base
+            const boardBase = await createBanterObject(state.root, BS.GeometryType.BoxGeometry,
+                { width: boardDimension + gap, height: boardDimension + gap, depth: boardThickness },
+                COLORS.board, new BS.Vector3(0, 0, -boardThickness / 2));
+
+            // --- Construct Grid ---
+            const gridRoot = await new BS.GameObject("Grid_Root").Async();
+            await gridRoot.SetParent(state.root, false);
+            await gridRoot.AddComponent(new BS.Transform());
+            const lineThickness = 0.005;
+
+            for (let i = 0; i < rows; i++) {
+                const pos = (i - (rows - 1) / 2) * gap;
+                // Vertical Line
+                await createBanterObject(gridRoot, BS.GeometryType.BoxGeometry,
+                    { width: lineThickness, height: boardDimension, depth: lineThickness },
+                    '#000000', new BS.Vector3(pos, 0, 0.01));
+                // Horizontal Line
+                await createBanterObject(gridRoot, BS.GeometryType.BoxGeometry,
+                    { width: boardDimension, height: lineThickness, depth: lineThickness },
+                    '#000000', new BS.Vector3(0, pos, 0.01));
+            }
         }
 
         // --- Create Clickable Intersections and Piece Placeholders ---
@@ -276,7 +313,30 @@
 
                 await piece.SetLayer(5); // Ensure it's on UI layer
                 piece.SetActive(false);
-                state.slots[r][c] = piece;
+                
+                // Create Custom Models
+                let blackModel = null;
+                let whiteModel = null;
+                let greenModel = null;
+
+                if (config.useCustomModels) {
+                    const modelPos = new BS.Vector3(x, y, 0.0);
+                    blackModel = await createCustomPiece(state.piecesRoot, 1, modelPos);
+                    if(blackModel) blackModel.SetActive(false);
+                    
+                    whiteModel = await createCustomPiece(state.piecesRoot, 2, modelPos);
+                    if(whiteModel) whiteModel.SetActive(false);
+
+                    greenModel = await createCustomPiece(state.piecesRoot, 'highlight', modelPos);
+                    if(greenModel) greenModel.SetActive(false);
+                }
+
+                state.slots[r][c] = {
+                    sphere: piece,
+                    blackModel: blackModel,
+                    whiteModel: whiteModel,
+                    greenModel: greenModel
+                };
             }
         }
 
@@ -354,7 +414,12 @@
 
         const color = hexToVector4(colorHex, opacity);
 
-        const shader = opacity < 1.0 ? "Unlit/DiffuseTransparent" : "Unlit/Diffuse";
+        let shader = "Unlit/Diffuse";
+        if (config.lighting === 'lit') {
+            shader = "Standard";
+        } else if (opacity < 1.0) {
+            shader = "Unlit/DiffuseTransparent";
+        }
         // Use cacheBust to create unique material instance for objects that need dynamic colors
         await obj.AddComponent(new BS.BanterMaterial(shader, "", color, BS.MaterialSide.Front, false, cacheBust || ""));
 
@@ -365,6 +430,37 @@
         }
 
         return obj;
+    }
+
+    async function createCustomPiece(parent, type, pos) {
+        const modelName = PIECE_MODELS[type];
+        if (!modelName) return null;
+
+        const piece = await new BS.GameObject(`CustomPiece_${type}`).Async();
+        await piece.SetParent(parent, false);
+        let t = await piece.AddComponent(new BS.Transform());
+        if (pos) t.localPosition = pos;
+        
+        // Scale and rotation for discs
+        t.localScale = new BS.Vector3(0.045, 0.045, 0.045); 
+        t.localEulerAngles = new BS.Vector3(90, 0, 0); 
+
+        const url = getModelUrl(modelName);
+        try {
+            await piece.AddComponent(new BS.BanterGLTF(url, false, false, false, false, false, false));
+            
+            // Add material for coloring/lighting interaction if supported by GLB, or just to have it
+            let colorHex = COLORS.player1;
+            if (type === 2) colorHex = COLORS.player2;
+            if (type === 'highlight') colorHex = COLORS.winHighlight;
+            
+            const colorVec4 = hexToVector4(colorHex);
+            const shader = config.lighting === 'lit' ? "Standard" : "Unlit/Diffuse";
+            await piece.AddComponent(new BS.BanterMaterial(shader, "", colorVec4, BS.MaterialSide.Front, false));
+        } catch (e) {
+            console.error("Failed to load custom piece", e);
+        }
+        return piece;
     }
 
     function handleCellClick(row, col) {
@@ -392,29 +488,35 @@
         for (let r = 0; r < config.boardSize; r++) {
             for (let c = 0; c < config.boardSize; c++) {
                 const cell = state.game.board[r][c];
-                const pieceObj = state.slots[r][c];
-                const mat = pieceObj.GetComponent(BS.ComponentType.BanterMaterial);
+                const slot = state.slots[r][c];
 
-                if (!mat) continue;
+                // Reset all
+                slot.sphere.SetActive(false);
+                if (slot.blackModel) slot.blackModel.SetActive(false);
+                if (slot.whiteModel) slot.whiteModel.SetActive(false);
+                if (slot.greenModel) slot.greenModel.SetActive(false);
+                
+                if (cell === 0) continue;
 
-                if (cell === 0) {
-                    pieceObj.SetActive(false);
+                const isWin = state.game.winningCells.some(([wr, wc]) => wr === r && wc === c);
+
+                if (config.useCustomModels) {
+                    if (isWin && slot.greenModel) {
+                        slot.greenModel.SetActive(true);
+                    } else {
+                        if (cell === 1 && slot.blackModel) slot.blackModel.SetActive(true);
+                        if (cell === 2 && slot.whiteModel) slot.whiteModel.SetActive(true);
+                    }
                 } else {
-                    let colorHex;
-                    if (cell === 1) {
-                        colorHex = COLORS.player1;
-                    } else { // cell === 2
-                        colorHex = COLORS.player2;
+                    slot.sphere.SetActive(true);
+                    const mat = slot.sphere.GetComponent(BS.ComponentType.BanterMaterial);
+                    if (mat) {
+                        let colorHex = (cell === 1) ? COLORS.player1 : COLORS.player2;
+                        if (isWin) {
+                            colorHex = COLORS.winHighlight;
+                        }
+                        mat.color = hexToVector4(colorHex);
                     }
-
-                    if (state.game.winningCells.some(([wr, wc]) => wr === r && wc === c)) {
-                        colorHex = COLORS.winHighlight;
-                    }
-
-
-
-                    mat.color = hexToVector4(colorHex);
-                    pieceObj.SetActive(true);
                 }
             }
         }

@@ -39,6 +39,10 @@ You can customize the game by adding URL parameters to the script's `src` attrib
 | `instance`        | `string`    | (current URL)         | A unique ID for the game instance. Use this if you have multiple Gomoku boards in the same world.             |
 | `boardSize`       | `integer`   | `15`                  | The size of the board (e.g., `15` for 15x15, `19` for 19x19).                                                 |
 | `hideUI`          | `boolean`   | `false`               | Set to `true` to hide the reset button.                                                                       |
+| `hideBoard`       | `boolean`   | `false`               | Hides the board geometry.                                                                                     |
+| `useCustomModels` | `boolean`   | `false`               | Use GLB models for pieces.                                                                                    |
+| `lighting`        | `string`    | `unlit`               | Shader type: 'lit' or 'unlit'.                                                                                |
+| `addLights`       | `boolean`   | `true`                | Add directional light for lit mode.                                                                           |
 | `boardPosition`   | `Vector3`   | `0 1.5 0`             | The position of the game board in your world (X Y Z, space-separated).                                        |
 | `boardRotation`   | `Vector3`   | `0 0 0`               | The rotation of the game board in Euler angles (X Y Z, space-separated).                                      |
 | `boardScale`      | `Vector3`   | `1 1 1`               | The scale of the game board (X Y Z, space-separated).                                                         |
