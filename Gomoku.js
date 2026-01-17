@@ -308,11 +308,9 @@
                 const x = (c - (cols - 1) / 2) * gap;
                 const y = (r - (rows - 1) / 2) * -gap; // Invert Y
 
-                // Invisible clickable cell at intersection
-                const cellObj = await createBanterObject(state.root, BS.GeometryType.BoxGeometry,
-                    { width: gap, height: gap, depth: 0.05 },
-                    '#FFFFFF', new BS.Vector3(x, y, 0), true, 0.0);
-
+                // Invisible clickable cell at intersection (Collider only, no mesh)
+                const cellObj = await createClickableCollider(state.root, new BS.Vector3(gap, gap, 0.05), new BS.Vector3(x, y, 0));
+                
                 cellObj.name = `Cell_${r}_${c}`;
                 cellObj.On('click', () => {
                     console.log(`Gomoku: Cell ${r}, ${c} clicked`);
@@ -320,25 +318,11 @@
                 });
                 state.cells[r][c] = cellObj;
 
-                // Visible piece placeholder (starts inactive) - needs unique material for color changes
-                // Use SphereGeometry for Go stones
-                const piece = await createBanterObject(state.piecesRoot, BS.GeometryType.SphereGeometry,
-                    { radius: pieceSize },
-                    COLORS.player1,
-                    new BS.Vector3(x, y, 0.04),
-                    false, 1.0, `piece_${r}_${c}`
-                );
-                // Flatten the sphere to look like a stone (scale Z axis for XY board)
-                const pt = piece.GetComponent(BS.ComponentType.Transform);
-                pt.localScale = new BS.Vector3(1, 1, 0.3);
-
-                await piece.SetLayer(5); // Ensure it's on UI layer
-                piece.SetActive(false);
-                
                 // Create Custom Models
                 let blackModel = null;
                 let whiteModel = null;
                 let greenModel = null;
+                let spherePiece = null;
 
                 if (config.useCustomModels) {
                     const modelPos = new BS.Vector3(x, y, 0.0);
@@ -350,10 +334,25 @@
 
                     greenModel = await createCustomPiece(state.piecesRoot, 'highlight', modelPos);
                     if(greenModel) greenModel.SetActive(false);
+                } else {
+                    // Visible piece placeholder (starts inactive) - needs unique material for color changes
+                    // Use SphereGeometry for Go stones
+                    spherePiece = await createBanterObject(state.piecesRoot, BS.GeometryType.SphereGeometry,
+                        { radius: pieceSize },
+                        COLORS.player1,
+                        new BS.Vector3(x, y, 0.04),
+                        false, 1.0, `piece_${r}_${c}`
+                    );
+                    // Flatten the sphere to look like a stone (scale Z axis for XY board)
+                    const pt = spherePiece.GetComponent(BS.ComponentType.Transform);
+                    pt.localScale = new BS.Vector3(1, 1, 0.3);
+
+                    await spherePiece.SetLayer(5); // Ensure it's on UI layer
+                    spherePiece.SetActive(false);
                 }
 
                 state.slots[r][c] = {
-                    sphere: piece,
+                    sphere: spherePiece,
                     blackModel: blackModel,
                     whiteModel: whiteModel,
                     greenModel: greenModel
@@ -453,6 +452,17 @@
         return obj;
     }
 
+    async function createClickableCollider(parent, size, pos) {
+        const obj = await new BS.GameObject("Collider").Async();
+        if (parent) await obj.SetParent(parent, false);
+        let t = await obj.AddComponent(new BS.Transform());
+        if (pos) t.localPosition = pos;
+        
+        await obj.AddComponent(new BS.BoxCollider(true, new BS.Vector3(0,0,0), size));
+        await obj.SetLayer(5);
+        return obj;
+    }
+
     async function createCustomPiece(parent, type, pos) {
         const modelName = PIECE_MODELS[type];
         if (!modelName) return null;
@@ -512,7 +522,7 @@
                 const slot = state.slots[r][c];
 
                 // Reset all
-                slot.sphere.SetActive(false);
+                if (slot.sphere) slot.sphere.SetActive(false);
                 if (slot.blackModel) slot.blackModel.SetActive(false);
                 if (slot.whiteModel) slot.whiteModel.SetActive(false);
                 if (slot.greenModel) slot.greenModel.SetActive(false);
@@ -529,14 +539,16 @@
                         if (cell === 2 && slot.whiteModel) slot.whiteModel.SetActive(true);
                     }
                 } else {
-                    slot.sphere.SetActive(true);
-                    const mat = slot.sphere.GetComponent(BS.ComponentType.BanterMaterial);
-                    if (mat) {
-                        let colorHex = (cell === 1) ? COLORS.player1 : COLORS.player2;
-                        if (isWin) {
-                            colorHex = COLORS.winHighlight;
+                    if (slot.sphere) {
+                        slot.sphere.SetActive(true);
+                        const mat = slot.sphere.GetComponent(BS.ComponentType.BanterMaterial);
+                        if (mat) {
+                            let colorHex = (cell === 1) ? COLORS.player1 : COLORS.player2;
+                            if (isWin) {
+                                colorHex = COLORS.winHighlight;
+                            }
+                            mat.color = hexToVector4(colorHex);
                         }
-                        mat.color = hexToVector4(colorHex);
                     }
                 }
             }
