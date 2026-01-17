@@ -307,11 +307,11 @@
             state.cells[r] = [];
         }
 
-        const creationPromises = [];
-
+        // Processing row by row to prevent game lag/crashing
         for (let r = 0; r < rows; r++) {
+            const rowPromises = [];
             for (let c = 0; c < cols; c++) {
-                creationPromises.push((async () => {
+                rowPromises.push((async () => {
                     const x = (c - (cols - 1) / 2) * gap;
                     const y = (r - (rows - 1) / 2) * -gap; // Invert Y
 
@@ -366,9 +366,9 @@
                     };
                 })());
             }
+            await Promise.all(rowPromises);
+            await new Promise(resolve => setTimeout(resolve, 0));
         }
-
-        await Promise.all(creationPromises);
 
         // Reset Button
         if (!config.hideUI) {
