@@ -301,64 +301,74 @@
 
         const pieceSize = gap * 0.4;
 
+        // Initialize arrays
         for (let r = 0; r < rows; r++) {
             state.slots[r] = [];
             state.cells[r] = [];
+        }
+
+        const creationPromises = [];
+
+        for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
-                const x = (c - (cols - 1) / 2) * gap;
-                const y = (r - (rows - 1) / 2) * -gap; // Invert Y
+                creationPromises.push((async () => {
+                    const x = (c - (cols - 1) / 2) * gap;
+                    const y = (r - (rows - 1) / 2) * -gap; // Invert Y
 
-                // Invisible clickable cell at intersection (Collider only, no mesh)
-                const cellObj = await createClickableCollider(state.root, new BS.Vector3(gap, gap, 0.05), new BS.Vector3(x, y, 0));
-                
-                cellObj.name = `Cell_${r}_${c}`;
-                cellObj.On('click', () => {
-                    console.log(`Gomoku: Cell ${r}, ${c} clicked`);
-                    handleCellClick(r, c);
-                });
-                state.cells[r][c] = cellObj;
-
-                // Create Custom Models
-                let blackModel = null;
-                let whiteModel = null;
-                let greenModel = null;
-                let spherePiece = null;
-
-                if (config.useCustomModels) {
-                    const modelPos = new BS.Vector3(x, y, 0.0);
-                    blackModel = await createCustomPiece(state.piecesRoot, 1, modelPos);
-                    if(blackModel) blackModel.SetActive(false);
+                    // Invisible clickable cell at intersection (Collider only, no mesh)
+                    const cellObj = await createClickableCollider(state.root, new BS.Vector3(gap, gap, 0.05), new BS.Vector3(x, y, 0));
                     
-                    whiteModel = await createCustomPiece(state.piecesRoot, 2, modelPos);
-                    if(whiteModel) whiteModel.SetActive(false);
+                    cellObj.name = `Cell_${r}_${c}`;
+                    cellObj.On('click', () => {
+                        console.log(`Gomoku: Cell ${r}, ${c} clicked`);
+                        handleCellClick(r, c);
+                    });
+                    state.cells[r][c] = cellObj;
 
-                    greenModel = await createCustomPiece(state.piecesRoot, 'highlight', modelPos);
-                    if(greenModel) greenModel.SetActive(false);
-                } else {
-                    // Visible piece placeholder (starts inactive) - needs unique material for color changes
-                    // Use SphereGeometry for Go stones
-                    spherePiece = await createBanterObject(state.piecesRoot, BS.GeometryType.SphereGeometry,
-                        { radius: pieceSize },
-                        COLORS.player1,
-                        new BS.Vector3(x, y, 0.04),
-                        false, 1.0, `piece_${r}_${c}`
-                    );
-                    // Flatten the sphere to look like a stone (scale Z axis for XY board)
-                    const pt = spherePiece.GetComponent(BS.ComponentType.Transform);
-                    pt.localScale = new BS.Vector3(1, 1, 0.3);
+                    // Create Custom Models
+                    let blackModel = null;
+                    let whiteModel = null;
+                    let greenModel = null;
+                    let spherePiece = null;
 
-                    await spherePiece.SetLayer(5); // Ensure it's on UI layer
-                    spherePiece.SetActive(false);
-                }
+                    if (config.useCustomModels) {
+                        const modelPos = new BS.Vector3(x, y, 0.015); // Slightly raised
+                        blackModel = await createCustomPiece(state.piecesRoot, 1, modelPos);
+                        if(blackModel) blackModel.SetActive(false);
+                        
+                        whiteModel = await createCustomPiece(state.piecesRoot, 2, modelPos);
+                        if(whiteModel) whiteModel.SetActive(false);
 
-                state.slots[r][c] = {
-                    sphere: spherePiece,
-                    blackModel: blackModel,
-                    whiteModel: whiteModel,
-                    greenModel: greenModel
-                };
+                        greenModel = await createCustomPiece(state.piecesRoot, 'highlight', modelPos);
+                        if(greenModel) greenModel.SetActive(false);
+                    } else {
+                        // Visible piece placeholder (starts inactive) - needs unique material for color changes
+                        // Use SphereGeometry for Go stones
+                        spherePiece = await createBanterObject(state.piecesRoot, BS.GeometryType.SphereGeometry,
+                            { radius: pieceSize },
+                            COLORS.player1,
+                            new BS.Vector3(x, y, 0.04),
+                            false, 1.0, `piece_${r}_${c}`
+                        );
+                        // Flatten the sphere to look like a stone (scale Z axis for XY board)
+                        const pt = spherePiece.GetComponent(BS.ComponentType.Transform);
+                        pt.localScale = new BS.Vector3(1, 1, 0.3);
+
+                        await spherePiece.SetLayer(5); // Ensure it's on UI layer
+                        spherePiece.SetActive(false);
+                    }
+
+                    state.slots[r][c] = {
+                        sphere: spherePiece,
+                        blackModel: blackModel,
+                        whiteModel: whiteModel,
+                        greenModel: greenModel
+                    };
+                })());
             }
         }
+
+        await Promise.all(creationPromises);
 
         // Reset Button
         if (!config.hideUI) {
