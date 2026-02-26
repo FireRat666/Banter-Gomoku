@@ -1,5 +1,5 @@
-(function () {
 window.addEventListener("unity-loaded", async () => {
+(function () {
     /**
      * Banter Gomoku (Five in a Row) Embed Script
      * A fully synced multiplayer Gomoku game for Banter.
@@ -607,6 +607,6 @@ window.addEventListener("unity-loaded", async () => {
     }
 
     setupScene();
-    
-})
+
 })();
+});
