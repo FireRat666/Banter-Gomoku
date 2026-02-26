@@ -1,4 +1,3 @@
-window.addEventListener("unity-loaded", async () => {
 (function () {
     /**
      * Banter Gomoku (Five in a Row) Embed Script
@@ -7,12 +6,12 @@ window.addEventListener("unity-loaded", async () => {
 
     // --- Configuration ---
     const config = {
-        boardPosition: new BS.Vector3(0, 1.5, 0),
-        boardRotation: new BS.Vector3(0, 0, 0),
-        boardScale: new BS.Vector3(1, 1, 1),
-        resetPosition: new BS.Vector3(0, -1.2, 0),
-        resetRotation: new BS.Vector3(0, 0, 0),
-        resetScale: new BS.Vector3(1, 1, 1),
+        boardPosition: [0, 1.5, 0],
+        boardRotation: [0, 0, 0],
+        boardScale: [1, 1, 1],
+        resetPosition: [0, -1.2, 0],
+        resetRotation: [0, 0, 0],
+        resetScale: [1, 1, 1],
         instance: window.location.href.split('?')[0],
         hideUI: false,
         boardSize: 15, // Standard is 15x15 or 19x19. 15 is a good start.
@@ -43,13 +42,19 @@ window.addEventListener("unity-loaded", async () => {
         const s = str.trim();
         if (s.includes(' ')) {
             const parts = s.split(' ').map(Number);
-            if (parts.length >= 3) return new BS.Vector3(parts[0], parts[1], parts[2]);
+            if (parts.length >= 3) return [parts[0], parts[1], parts[2]];
+        }
+        const num = parseFloat(s);
+        if (!isNaN(num)) {
+            return [num, num, num];
         }
         return defaultVal;
     };
 
     // Parse URL params
     const currentScript = document.currentScript;
+    const scriptSrc = currentScript ? currentScript.src : null;
+
     if (currentScript) {
         const url = new URL(currentScript.src);
         const params = new URLSearchParams(url.search);
@@ -203,8 +208,8 @@ window.addEventListener("unity-loaded", async () => {
 
     function getModelUrl(modelName) {
         try {
-            if (currentScript) {
-                return new URL(`../Models/${modelName}`, currentScript.src).href;
+            if (scriptSrc) {
+                return new URL(`../Models/${modelName}`, scriptSrc).href;
             }
         } catch (e) { console.error("Error resolving model URL:", e); }
         return `../Models/${modelName}`;
@@ -606,7 +611,30 @@ window.addEventListener("unity-loaded", async () => {
         });
     }
 
-    setupScene();
+    // --- Main Initializer ---
+    let initialized = false;
+    const initGame = async () => {
+        if (initialized) return;
+        initialized = true;
+        console.log("Gomoku: Initializing Game...");
+
+        // Convert config arrays to BS.Vector3 now that BS is available
+        config.boardPosition = new BS.Vector3(...config.boardPosition);
+        config.boardRotation = new BS.Vector3(...config.boardRotation);
+        config.boardScale = new BS.Vector3(...config.boardScale);
+        config.resetPosition = new BS.Vector3(...config.resetPosition);
+        config.resetRotation = new BS.Vector3(...config.resetRotation);
+        config.resetScale = new BS.Vector3(...config.resetScale);
+
+        await setupScene();
+    };
+
+    // --- Check for BS availability ---
+    if (window.BS) {
+        initGame();
+    } else {
+        window.addEventListener("unity-loaded", initGame);
+        window.addEventListener("bs-loaded", initGame);
+    }
 
 })();
-});
